@@ -133,13 +133,8 @@
       <label>Senin adın<input id="f-from" maxlength="24" placeholder="Adın" autocomplete="off"></label>
       <label>Onun adı<input id="f-to" maxlength="24" placeholder="Adı" autocomplete="off"></label>
       <label>Mektubun <span class="count" id="cnt">0 / 900</span>
-        <textarea id="f-msg" rows="6" maxlength="900" placeholder="Yazmak istediğin her şey burada."></textarea>
+        <textarea id="f-msg" rows="7" maxlength="900" placeholder="Ne söylemek istiyorsan onu yaz."></textarea>
       </label>
-      <div class="chips" id="tpl">
-        <button class="chip" data-t="Yaşadıklarımız için sorumluluk almam gerekiyor. Seni üzdüm ve bunun farkındayım. Bahane aramıyorum, sadece özür diliyorum. Aramızdaki şeyin benim için çok değerli olduğunu bilmeni isterim. Konuşmak için hazırım.">Sorumluluk alan</button>
-        <button class="chip" data-t="Sessizliğin ağır olduğunu fark ettim. Haklı ya da haksız olmaktan çok seninle iyi olmayı önemsiyorum. Hatalarımı görüyorum ve düzeltmek istiyorum. Müsait olduğunda konuşabilir miyiz?">Sakin ve açık</button>
-        <button class="chip" data-t="Uzun cümleler kurmayacağım. Üzgünüm, seni özledim ve bu küslüğün bitmesini istiyorum. Bir şans daha verir misin?">Kısa ve net</button>
-      </div>
 
       <label>Görünüm</label>
       <div class="themes" id="themes">
@@ -150,10 +145,12 @@
 
       <div class="row" style="margin-top:20px"><button id="gen">Linki oluştur</button></div>
       <div class="out" id="out">
+        <p id="onote" style="margin:0 0 10px;color:var(--ink)"></p>
         <div class="linkbox" id="linkbox"></div>
+        <p style="font-size:.82rem;margin-top:10px">Cevap verdiğinde sana yeni bir link gönderecek. O linki açınca cevabını okursun.</p>
         <div class="row">
           <button id="copy">Kopyala</button>
-          <button id="wa">Gönder</button>
+          <button id="wa">Linki gönder</button>
           <button class="ghost" id="try">Önizle</button>
         </div>
       </div>
@@ -195,22 +192,22 @@
     </div>
     <div id="letter" class="serif"></div>
 
-    <div id="actions" class="fade">
-      <div class="row" style="justify-content:center"><button id="toreply">Cevap yaz</button></div>
-    </div>
-
     <div id="replybox" class="card fade" style="display:none">
-      <p class="eyebrow">Cevabın</p>
-      <textarea id="r-msg" rows="5" maxlength="600" placeholder="Ne düşündüğünü yaz."></textarea>
+      <p class="eyebrow">Sıra sende</p>
+      <h1 class="serif" style="font-size:1.35rem">Cevabını yaz</h1>
+      <p id="rhint"></p>
+      <textarea id="r-msg" rows="5" maxlength="600" placeholder="Ne düşünüyorsan onu yaz." style="margin-top:12px"></textarea>
+      <label style="margin-top:14px">Cevabın özeti</label>
       <div class="chips" id="rstat">
-        <button class="chip sel" data-s="0">Barışalım</button>
-        <button class="chip" data-s="1">Konuşmamız gerek</button>
+        <button class="chip sel" data-s="0">Barışmak istiyorum</button>
+        <button class="chip" data-s="1">Önce konuşalım</button>
         <button class="chip" data-s="2">Biraz zamana ihtiyacım var</button>
       </div>
-      <div class="row"><button id="rgen">Cevabı link yap</button></div>
+      <div class="row"><button id="rgen">Cevabımı hazırla</button></div>
       <div class="out" id="rout">
+        <p id="rnote" style="margin:0 0 10px;color:var(--ink)"></p>
         <div class="linkbox" id="rlink"></div>
-        <div class="row"><button id="rcopy">Kopyala</button><button id="rwa">Gönder</button></div>
+        <div class="row"><button id="rcopy">Kopyala</button><button id="rwa">Cevabı gönder</button></div>
       </div>
     </div>
   </section>
@@ -237,7 +234,7 @@ const show = id => document.querySelectorAll('.screen').forEach(s => s.classList
 const enc = o => btoa(unescape(encodeURIComponent(JSON.stringify(o)))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
 const dec = s => JSON.parse(decodeURIComponent(escape(atob(s.replace(/-/g,'+').replace(/_/g,'/')))));
 const base = () => location.href.split('#')[0];
-const STATUS = ['Barışalım', 'Konuşmamız gerek', 'Biraz zamana ihtiyacım var'];
+const STATUS = ['Barışmak istiyor', 'Önce konuşmak istiyor', 'Biraz zamana ihtiyacı var'];
 
 /* ---------- ses: yumuşak, dosyasız ---------- */
 let actx;
@@ -356,22 +353,17 @@ function initMaker() {
   });
   const cnt = () => $('cnt').textContent = $('f-msg').value.length + ' / 900';
   $('f-msg').addEventListener('input', cnt);
-  $('tpl').addEventListener('click', e => {
-    const b = e.target.closest('.chip'); if (!b) return;
-    $('f-msg').value = b.dataset.t; cnt();
-    document.querySelectorAll('#tpl .chip').forEach(c => c.classList.toggle('sel', c === b));
-  });
   $('gen').onclick = () => {
     const d = { f: $('f-from').value.trim(), t: $('f-to').value.trim(), m: $('f-msg').value.trim(), th: theme };
     const bad = [['f-from', d.f], ['f-to', d.t], ['f-msg', d.m]].filter(x => !x[1]);
     if (bad.length) { bad.forEach(([id]) => { const i = $(id); i.style.borderColor = '#e0536d'; i.animate([{translate:'0'},{translate:'-6px'},{translate:'6px'},{translate:'0'}], 260); setTimeout(() => i.style.borderColor = '', 1500); }); return; }
     url = base() + '#d=' + enc(d);
-    $('out').style.display = 'block'; $('linkbox').textContent = url;
+    $('out').style.display = 'block'; $('linkbox').textContent = url; $('onote').textContent = 'Mektubun hazır. Bu linki ' + d.t + ' adlı kişiye gönder.';
     spark(innerWidth / 2, innerHeight / 2, 24); tone(660, .3, .05, 1.4);
     $('out').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   };
   $('copy').onclick = () => copy($('copy'), url);
-  $('wa').onclick = () => share('Sana yazdığım bir mektup var.', url);
+  $('wa').onclick = () => share('Sana yazdığım bir mektup var. Açınca anlarsın.', url);
   $('try').onclick = () => open(url, '_blank');
 }
 
@@ -483,16 +475,16 @@ function initViewer(d) {
       const speed = rm ? 0 : Math.max(16, Math.min(44, 3000 / msg.length));
       const t = setInterval(() => {
         body.textContent = msg.slice(0, ++i);
-        if (i >= msg.length || rm) { body.textContent = msg; clearInterval(t); body.classList.remove('caret'); sig.style.transition = 'opacity .9s'; sig.style.opacity = 1; setTimeout(() => $('actions').classList.add('on'), 600); }
+        if (i >= msg.length || rm) { body.textContent = msg; clearInterval(t); body.classList.remove('caret'); sig.style.transition = 'opacity .9s'; sig.style.opacity = 1; setTimeout(showReply, 700); }
       }, speed);
     }, 2600);
   }
 
-  $('toreply').onclick = () => {
-    $('actions').classList.remove('on'); $('actions').style.display = 'none';
+  function showReply() {
+    $('rhint').textContent = 'Yazdıkların bir linke dönüşecek. O linki ' + from + ' adlı kişiye gönderirsin.';
     const rb = $('replybox'); rb.style.display = 'block'; requestAnimationFrame(() => rb.classList.add('on'));
-    setTimeout(() => rb.scrollIntoView({ behavior: 'smooth', block: 'end' }), 50);
-  };
+    setTimeout(() => rb.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
+  }
   let status = 0, rurl = '';
   $('rstat').addEventListener('click', e => {
     const b = e.target.closest('.chip'); if (!b) return; status = +b.dataset.s;
@@ -502,13 +494,13 @@ function initViewer(d) {
     const a = $('r-msg').value.trim();
     if (!a) { const i = $('r-msg'); i.style.borderColor = '#e0536d'; i.animate([{translate:'0'},{translate:'-6px'},{translate:'6px'},{translate:'0'}], 260); setTimeout(() => i.style.borderColor = '', 1500); return; }
     rurl = base() + '#r=' + enc({ f: from, t: name, a, s: status, th: d.th || 'bordo' });
-    $('rout').style.display = 'block'; $('rlink').textContent = rurl;
+    $('rout').style.display = 'block'; $('rlink').textContent = rurl; $('rnote').textContent = 'Cevabın hazır. Bu linki ' + from + ' adlı kişiye gönder.';
     tone(660, .3, .05, 1.4); spark(innerWidth / 2, innerHeight * .6, 22);
     if (status === 0) confetti();
     $('rout').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   };
   $('rcopy').onclick = () => copy($('rcopy'), rurl);
-  $('rwa').onclick = () => share('Mektubunu okudum. Cevabım:', rurl);
+  $('rwa').onclick = () => share('Mektubunu okudum. Cevabım bu linkte.', rurl);
 }
 
 /* =============== CEVABI GÖRÜNTÜLE (mektubu yazan kişi) =============== */
