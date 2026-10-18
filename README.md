@@ -1,4 +1,4 @@
-# Barışalım mı? 💌
+# barisalim mi? 💌
 
 Sevgiliye gönderilen, küsmüşlüğü bitiren küçük bir web oyunu.
 
@@ -6,4 +6,4 @@ Sevgiliye gönderilen, küsmüşlüğü bitiren küçük bir web oyunu.
 - Sunucu yok: isimler ve mektup linkin `#d=` kısmında taşınır, hiçbir şey saklanmaz
 - 3 tema, WhatsApp paylaşımı, `prefers-reduced-motion` desteği
 
-Canlı: https://isaanilkoca.github.io/barisalim/
+Canlı: https://isaanilkoca.github.io/barisalim-mi/
