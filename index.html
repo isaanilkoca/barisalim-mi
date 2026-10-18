@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>baristiran</title>
+<style>
+  :root { --bg:#fff0f3; --ink:#4a1d2c; --pink:#ff4d79; --pink-d:#d62f5b; }
+  * { box-sizing:border-box; }
+  html,body { margin:0; height:100%; }
+  body { font-family:system-ui,-apple-system,"Segoe UI",sans-serif; background:var(--bg); color:var(--ink);
+         display:flex; align-items:center; justify-content:center; overflow:hidden; }
+  .screen { display:none; width:100%; max-width:480px; padding:24px; text-align:center; }
+  .screen.on { display:block; }
+  h1 { font-size:1.8rem; margin:0 0 .5rem; }
+  p { line-height:1.5; }
+  button, .btn { font:inherit; border:0; border-radius:999px; padding:.8rem 1.6rem; cursor:pointer; background:var(--pink); color:#fff; font-weight:600; }
+  button:hover { background:var(--pink-d); }
+  button.ghost { background:#fff; color:var(--ink); border:2px solid #f3c1cd; }
+  input, textarea { width:100%; font:inherit; padding:.7rem .9rem; border:2px solid #f3c1cd; border-radius:12px; margin:.35rem 0 .8rem; background:#fff; color:var(--ink); }
+  label { display:block; text-align:left; font-size:.85rem; font-weight:600; }
+  #choices { position:relative; height:120px; margin-top:1.5rem; }
+  #no { position:absolute; left:10%; top:30px; }
+  #yes { position:absolute; right:10%; top:30px; transition:transform .15s; }
+  #field { position:relative; height:55vh; max-height:420px; background:#fff; border-radius:20px; overflow:hidden; touch-action:manipulation; box-shadow:0 4px 20px #0001; }
+  .heart { position:absolute; font-size:2rem; cursor:pointer; user-select:none; will-change:transform; }
+  #letter { background:#fff; border-radius:16px; padding:1.4rem; text-align:left; white-space:pre-wrap; box-shadow:0 4px 20px #0001; animation:pop .6s ease; }
+  @keyframes pop { from { transform:scale(.8); opacity:0 } to { transform:scale(1); opacity:1 } }
+  .float { position:fixed; bottom:-40px; font-size:1.6rem; animation:up 3s linear forwards; pointer-events:none; }
+  @keyframes up { to { transform:translateY(-110vh) rotate(30deg); opacity:0 } }
+  #out { word-break:break-all; font-size:.8rem; background:#fff; border-radius:10px; padding:.6rem; margin-top:.8rem; display:none; }
+</style>
+</head>
+<body>
+
+<!-- Oluşturucu: gönderen burada linki hazırlar -->
+<section class="screen" id="make">
+  <h1>💌 baristiran</h1>
+  <p>Doldur, linki sevgiline gönder.</p>
+  <label>Senin adın<input id="f-from" placeholder="Ali"></label>
+  <label>Sevgilinin adı<input id="f-to" placeholder="Ayşe"></label>
+  <label>Mektubun<textarea id="f-msg" rows="5" placeholder="Seni üzdüysem özür dilerim..."></textarea></label>
+  <button id="gen">Linki oluştur</button>
+  <div id="out"></div>
+  <p><button class="ghost" id="copy" style="display:none">Kopyala</button></p>
+</section>
+
+<!-- 1. adım: küs müsün -->
+<section class="screen" id="s1">
+  <h1 id="s1-title"></h1>
+  <p>Hâlâ bana küskün müsün? 🥺</p>
+  <div id="choices">
+    <button id="yes">Evet, küsüm</button>
+    <button id="no">Hayır, küs değilim</button>
+  </div>
+</section>
+
+<!-- 2. adım: mini oyun -->
+<section class="screen" id="s2">
+  <h1>Kalpleri yakala 💗</h1>
+  <p>Mektubu açmak için <b id="left">10</b> kalp daha topla.</p>
+  <div id="field"></div>
+</section>
+
+<!-- 3. adım: mektup -->
+<section class="screen" id="s3">
+  <h1 id="s3-title"></h1>
+  <div id="letter"></div>
+  <p><button id="done">Barıştık 💕</button></p>
+</section>
+
+<script>
+const $ = id => document.getElementById(id);
+const show = id => { document.querySelectorAll('.screen').forEach(s => s.classList.remove('on')); $(id).classList.add('on'); };
+
+// Unicode güvenli base64 (veriyi linkin #hash kısmına gömüyoruz, sunucu gerekmiyor)
+const enc = o => btoa(unescape(encodeURIComponent(JSON.stringify(o))));
+const dec = s => JSON.parse(decodeURIComponent(escape(atob(s))));
+
+const raw = location.hash.startsWith('#d=') ? location.hash.slice(3) : null;
+let data = null;
+try { if (raw) data = dec(raw); } catch (e) {}
+
+// ---------- Oluşturucu ----------
+if (!data) {
+  show('make');
+  $('gen').onclick = () => {
+    const d = { from:$('f-from').value.trim(), to:$('f-to').value.trim(), msg:$('f-msg').value.trim() };
+    if (!d.from || !d.to || !d.msg) { alert('Üç alanı da doldur 🙂'); return; }
+    const url = location.href.split('#')[0] + '#d=' + enc(d);
+    $('out').style.display = 'block'; $('out').textContent = url;
+    $('copy').style.display = 'inline-block';
+    $('copy').onclick = () => navigator.clipboard.writeText(url).then(() => $('copy').textContent = 'Kopyalandı ✓');
+  };
+} else {
+  // ---------- Alıcı akışı ----------
+  show('s1');
+  $('s1-title').textContent = `${data.to}, ${data.from} sana bir şey göndermiş 💌`;
+
+  // "Hayır" butonu kaçar, "Evet" büyür
+  let tries = 0;
+  const dodge = e => {
+    e.preventDefault();
+    tries++;
+    const box = $('choices').getBoundingClientRect();
+    $('no').style.left = Math.random() * (box.width - $('no').offsetWidth) + 'px';
+    $('no').style.top = Math.random() * (box.height - $('no').offsetHeight) + 'px';
+    $('no').style.right = 'auto';
+    $('yes').style.transform = `scale(${1 + tries * 0.15})`;
+  };
+  // Not: buton etiketleri bilerek ters: "Hayır, küs değilim" kaçar → kullanıcı sonunda "Evet" der ya da yakalar.
+  $('no').addEventListener('mouseenter', dodge);
+  $('no').addEventListener('touchstart', dodge, { passive:false });
+  $('no').onclick = startGame;   // yakalarsa da barışmış sayılır 😄
+  $('yes').onclick = startGame;
+
+  // ---------- Mini oyun ----------
+  function startGame() {
+    show('s2');
+    let left = 10;
+    const field = $('field');
+    const spawn = () => {
+      if (left <= 0) return;
+      const h = document.createElement('div');
+      h.className = 'heart';
+      h.textContent = ['💗','💖','💕','❤️'][Math.floor(Math.random() * 4)];
+      h.style.left = Math.random() * (field.clientWidth - 40) + 'px';
+      h.style.top = '-40px';
+      field.appendChild(h);
+      const speed = 1.5 + Math.random() * 2;
+      let y = -40;
+      const fall = () => {
+        if (!h.isConnected) return;
+        y += speed; h.style.top = y + 'px';
+        if (y > field.clientHeight) h.remove(); else requestAnimationFrame(fall);
+      };
+      requestAnimationFrame(fall);
+      const grab = () => { if (!h.isConnected) return; h.remove(); left--; $('left').textContent = Math.max(left, 0); if (left <= 0) { clearInterval(timer); setTimeout(showLetter, 400); } };
+      h.addEventListener('pointerdown', grab);
+    };
+    const timer = setInterval(spawn, 600);
+  }
+
+  // ---------- Mektup ----------
+  function showLetter() {
+    show('s3');
+    $('s3-title').textContent = `${data.to} için 💌`;
+    $('letter').textContent = data.msg + `\n\n— ${data.from}`;
+  }
+
+  $('done').onclick = () => {
+    for (let i = 0; i < 25; i++) {
+      const f = document.createElement('div');
+      f.className = 'float';
+      f.textContent = ['💕','💖','✨','💗'][i % 4];
+      f.style.left = Math.random() * 100 + 'vw';
+      f.style.animationDelay = Math.random() * 1.2 + 's';
+      document.body.appendChild(f);
+      setTimeout(() => f.remove(), 5000);
+    }
+  };
+}
+</script>
+</body>
+</html>
